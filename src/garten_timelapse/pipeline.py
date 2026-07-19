@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import logging
 
-from . import loader
+import imageio.v3 as iio
+
+from . import loader, render
 from .config import Config
 
 logger = logging.getLogger("garten_timelapse")
@@ -25,8 +27,12 @@ def run(cfg: Config) -> int:
         return 1
     logger.info("%d Bilder gefunden.", len(photos))
 
-    # TODO (TDD): Bilder laden -> stabilize.stabilize_series -> render.prepare_frame -> render.write
-    #  - pro Eintrag in report.failed_indices eine Warnung mit Zeitstempel
-    #  - bei report.crop_clamped eine Warnung (Sprung > max_zoom -> Segment-Modus erwägen)
-    #  - Abschluss-Zusammenfassung (N ausgerichtet, M unverändert, Crop-Faktor)
-    raise NotImplementedError("pipeline.run: Verarbeitung per TDD implementieren")
+    # Slice 3 hängt hier die Stabilisierung (stabilize.stabilize_series) vor prepare ein.
+    frames = [
+        render.prepare_frame(iio.imread(p), loader.parse_timestamp(p), cfg.render)
+        for p in photos
+    ]
+
+    render.write(frames, cfg.out, cfg.fps, cfg.render.colors)
+    logger.info("Zeitraffer geschrieben: %s (%d Frames)", cfg.out, len(frames))
+    return 0

@@ -1,9 +1,30 @@
-"""Tests für die Ausgabe — per TDD zu füllen.
+"""Tests für die Ausgabe (Slice 1: Passthrough-MP4)."""
+import imageio.v3 as iio
+import numpy as np
 
-Idee: eine Handvoll Frames durch write() in eine .mp4/.gif/.webm schreiben und prüfen,
-dass die Datei existiert, das richtige Format hat und die erwartete Frame-Zahl trägt;
-prepare_frame separat auf Skalierung + Caption prüfen.
-"""
-import pytest
+from garten_timelapse.config import RenderConfig
+from garten_timelapse.render import prepare_frame, write
 
-pytest.skip("render noch nicht implementiert (TDD)", allow_module_level=True)
+
+def test_write_mp4_contains_all_frames(tmp_path):
+    frames = [np.full((64, 96, 3), fill, dtype=np.uint8) for fill in (20, 130, 240)]
+    out = tmp_path / "clip.mp4"
+
+    write(frames, out, fps=10)
+
+    assert out.exists() and out.stat().st_size > 0
+    back = iio.imread(out, index=None)   # alle Frames als (T, H, W, C)
+    assert back.shape[0] == 3
+
+
+def test_prepare_frame_resizes_to_width_keeping_aspect():
+    img = np.zeros((600, 800, 3), dtype=np.uint8)   # H=600, W=800 (4:3)
+    out = prepare_frame(img, None, RenderConfig(width=400, caption=False))
+    assert out.shape[1] == 400   # Breite
+    assert out.shape[0] == 300   # Höhe proportional
+
+
+def test_prepare_frame_does_not_upscale():
+    img = np.zeros((300, 400, 3), dtype=np.uint8)
+    out = prepare_frame(img, None, RenderConfig(width=800, caption=False))
+    assert out.shape[:2] == (300, 400)   # kleiner als width -> unverändert
