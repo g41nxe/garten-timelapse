@@ -35,8 +35,15 @@ def run(cfg: Config) -> int:
         no_caption = replace(cfg.render, caption=False)
         frames = [render.prepare_frame(iio.imread(p), None, no_caption) for p in photos]
         frames, report = stabilize.stabilize_series(frames, cfg.stabilize)
+        frames = stabilize.crop_series(frames, report, cfg.stabilize)
         if report.failed_indices:   # ausführliche Warnungen: Slice 5
             logger.warning("%d Frame(s) nicht ausgerichtet.", len(report.failed_indices))
+        if report.crop_clamped:
+            logger.warning(
+                "Zuschnitt auf max_zoom=%.2f geklemmt (Versatz zu groß) — evtl. Segment-Modus erwägen.",
+                cfg.stabilize.max_zoom,
+            )
+        logger.info("Zuschnitt-Faktor: %.2fx", report.crop_zoom)
         frames = [render.prepare_frame(f, ts, cfg.render) for f, ts in zip(frames, timestamps)]
     else:
         frames = [

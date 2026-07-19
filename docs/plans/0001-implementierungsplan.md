@@ -45,9 +45,10 @@ _ORB+RANSAC (`estimate_transform`, alle 3 Transform-Modelle), `stabilize_series`
   → `stabilize_series` holt es zurück (Ergebnis ≈ Referenz, Restversatz < 1 px).
 - **Sichtbar:** vorher/nachher-MP4 — Wackeln weg, Ränder noch da.
 
-## Slice 4 — Zuschnitt + max-zoom + fill
+## Slice 4 — Zuschnitt + max-zoom + fill — ✅ erledigt
 
 **Ziel:** Saubere Kanten statt schwarzer Ränder.
+_`crop_series`: gemeinsames gültiges Rechteck (Masken via Konstant-0-Warp) → größtes zentrales Rechteck, gedeckelt bei `max_zoom`; `fill` steuert Warp-Border (replicate/black). Report crop_zoom/crop_clamped + Warnungen in pipeline. Real: 111 Fotos → 1.13× (704×528), in-memory randfrei (Kanten 38–54). 24 Tests grün. (Rest-0 im MP4 = H.264-Rauschen auf dunklen Kanten → Encode-Qualität in Slice 6.)_
 
 - **Implementieren:** größtes gemeinsames gültiges Rechteck über alle Warps; Deckel
   `max_zoom`; bei Überschreitung klemmen + Rest-Rand `fill` (`replicate`/`black`).
