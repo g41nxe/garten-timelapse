@@ -22,9 +22,10 @@ _Verifiziert auf 111 echten Fotos: 800×600, 2,8 MB, 13 Tests grün._
   3 synthetischen Bildern → Datei existiert, Frame-Zahl stimmt.
 - **Sichtbar:** `garten-timelapse --config zeitraffer.toml` → abspielbare MP4.
 
-## Slice 2 — Zeitstempel-Einblendung
+## Slice 2 — Zeitstempel-Einblendung — ✅ erledigt
 
 **Ziel:** Die MP4 zeigt pro Frame den Aufnahme-Zeitpunkt.
+_`format_caption` (deutscher Wochentag, locale-frei) + Balken/Schatten in `prepare_frame`; auf 111 Fotos verifiziert. 16 Tests grün._
 
 - **Implementieren:** Caption-Overlay in `prepare_frame` (Pillow, Balken + Schatten),
   Zeitstempel kommt aus `loader.parse_timestamp`. Schalter `render.caption`.

@@ -11,9 +11,42 @@ from pathlib import Path
 
 import imageio.v3 as iio
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 from .config import RenderConfig
+
+_WEEKDAYS_DE = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+# Schriftkandidaten: Windows (Arial Bold), Linux/Pi (DejaVu), sonst Pillow-Default.
+_FONT_CANDIDATES = [
+    r"C:\Windows\Fonts\arialbd.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+]
+
+
+def format_caption(dt: datetime) -> str:
+    """Zeitstempel als Einblendungstext, deutscher Wochentag ohne Locale-Abhängigkeit."""
+    return f"{_WEEKDAYS_DE[dt.weekday()]} {dt:%d.%m.%Y %H:%M}"
+
+
+def _load_font(size: int):
+    for path in _FONT_CANDIDATES:
+        try:
+            return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _draw_caption(img: Image.Image, text: str) -> None:
+    draw = ImageDraw.Draw(img)
+    font = _load_font(max(14, img.width // 28))
+    pad = max(6, img.width // 60)
+    box = draw.textbbox((0, 0), text, font=font)
+    tw, th = box[2] - box[0], box[3] - box[1]
+    y = img.height - th - 2 * pad
+    draw.rectangle([0, y - pad, tw + 3 * pad, img.height], fill=(0, 0, 0))
+    draw.text((pad + 1, y + 1), text, font=font, fill=(0, 0, 0))   # Schatten
+    draw.text((pad, y), text, font=font, fill=(255, 255, 255))
 
 
 def prepare_frame(image: np.ndarray, timestamp: datetime | None, cfg: RenderConfig) -> np.ndarray:
@@ -22,7 +55,8 @@ def prepare_frame(image: np.ndarray, timestamp: datetime | None, cfg: RenderConf
     if img.width > cfg.width:
         height = round(img.height * cfg.width / img.width)
         img = img.resize((cfg.width, height), Image.LANCZOS)
-    # Zeitstempel-Einblendung: Slice 2.
+    if cfg.caption and timestamp is not None:
+        _draw_caption(img, format_caption(timestamp))
     return np.asarray(img)
 
 
