@@ -10,10 +10,11 @@ zeigt den Ablauf.
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 
 import imageio.v3 as iio
 
-from . import loader, render
+from . import loader, render, stabilize
 from .config import Config
 
 logger = logging.getLogger("garten_timelapse")
@@ -27,11 +28,21 @@ def run(cfg: Config) -> int:
         return 1
     logger.info("%d Bilder gefunden.", len(photos))
 
-    # Slice 3 hängt hier die Stabilisierung (stabilize.stabilize_series) vor prepare ein.
-    frames = [
-        render.prepare_frame(iio.imread(p), loader.parse_timestamp(p), cfg.render)
-        for p in photos
-    ]
+    timestamps = [loader.parse_timestamp(p) for p in photos]
+
+    if cfg.stabilize.enabled:
+        # Erst skalieren (schnell, Caption nicht mitverzerren), dann stabilisieren, dann Caption.
+        no_caption = replace(cfg.render, caption=False)
+        frames = [render.prepare_frame(iio.imread(p), None, no_caption) for p in photos]
+        frames, report = stabilize.stabilize_series(frames, cfg.stabilize)
+        if report.failed_indices:   # ausführliche Warnungen: Slice 5
+            logger.warning("%d Frame(s) nicht ausgerichtet.", len(report.failed_indices))
+        frames = [render.prepare_frame(f, ts, cfg.render) for f, ts in zip(frames, timestamps)]
+    else:
+        frames = [
+            render.prepare_frame(iio.imread(p), ts, cfg.render)
+            for p, ts in zip(photos, timestamps)
+        ]
 
     render.write(frames, cfg.out, cfg.fps, cfg.render.colors)
     logger.info("Zeitraffer geschrieben: %s (%d Frames)", cfg.out, len(frames))

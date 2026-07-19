@@ -33,9 +33,10 @@ _`format_caption` (deutscher Wochentag, locale-frei) + Balken/Schatten in `prepa
   lässt das Bild unverändert.
 - **Sichtbar:** MP4 mit eingeblendetem Datum/Uhrzeit.
 
-## Slice 3 — Stabilisierung (Kern): reference + euclidean, noch ohne Crop
+## Slice 3 — Stabilisierung (Kern): reference + euclidean, noch ohne Crop — ✅ erledigt
 
 **Ziel:** Die MP4 steht sichtbar ruhiger (schwarze Ränder noch erlaubt).
+_ORB+RANSAC (`estimate_transform`, alle 3 Transform-Modelle), `stabilize_series` im reference-Modus (Fehlschlag→Identität); in pipeline verdrahtet (resize→stabilisieren→Caption). Real-Beweis: auf einem Gleich-Licht-Paar 72 % weniger Restversatz (8,06→2,29); 111 Fotos in 56 s, 0 Fehler. 22 Tests grün._
 
 - **Implementieren:** `stabilize.estimate_transform` (ORB-Features → Match → RANSAC,
   `estimateAffinePartial2D` = euclidean); `stabilize_series` im `reference`-Modus
