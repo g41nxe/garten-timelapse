@@ -64,24 +64,50 @@ def _warp(img: np.ndarray, M: np.ndarray, transform: str, border: int = cv2.BORD
     return cv2.warpAffine(img, M, (w, h), borderMode=border)
 
 
+def _compose(a2r: np.ndarray, i2a: np.ndarray, transform: str) -> np.ndarray:
+    """Verkettet: frame_i -> ref = (anchor -> ref) ∘ (frame_i -> anchor)."""
+    if transform == "homography":
+        return a2r @ i2a
+
+    def _to3(M):
+        return np.vstack([M, [0.0, 0.0, 1.0]])
+
+    return (_to3(a2r) @ _to3(i2a))[:2]
+
+
 def stabilize_series(frames: list[np.ndarray], cfg: StabilizeConfig) -> tuple[list[np.ndarray], StabilizeReport]:
     """Richtet die Serie im reference-Modus aus (jedes Frame -> erstes Frame).
 
-    Größen-erhaltend: den Zuschnitt macht crop_series (mit den hier gesammelten
-    Transforms). Fehlschlag -> Identität (Frame bleibt drin, Index im Report).
-    Retry/min_inliers (Slice 5) und sequential (Slice 6) folgen.
+    Eine Ausrichtung gilt erst ab `min_inliers` als vertrauenswürdig. Scheitert sie an
+    der Referenz, wird sie gegen die nächstgelegenen bereits gut ausgerichteten Frames
+    versucht (bis `retries`) und über deren bekannte Transform verkettet; sonst bleibt
+    das Frame unverändert (Identität, Index im Report). Größen-erhaltend — den Zuschnitt
+    macht crop_series.
     """
     report = StabilizeReport()
     if not frames:
         return [], report
 
     border = cv2.BORDER_REPLICATE if cfg.fill == "replicate" else cv2.BORDER_CONSTANT
-    ref_gray = _to_gray(frames[0])
+    grays = [_to_gray(f) for f in frames]
     out = [frames[0]]
     report.transforms = [None]   # Referenz = Identität
     report.aligned = 1
+
     for i in range(1, len(frames)):
-        M, _inliers = estimate_transform(_to_gray(frames[i]), ref_gray, cfg.transform)
+        M, n = estimate_transform(grays[i], grays[0], cfg.transform)
+        if M is None or n < cfg.min_inliers:
+            M = None   # zu wenig Konfidenz -> verwerfen und über Nachbarn versuchen
+            anchors = sorted(
+                (j for j in range(1, i) if report.transforms[j] is not None),
+                key=lambda j: abs(j - i),
+            )[: cfg.retries]
+            for j in anchors:
+                M_ij, n_ij = estimate_transform(grays[i], grays[j], cfg.transform)
+                if M_ij is not None and n_ij >= cfg.min_inliers:
+                    M = _compose(report.transforms[j], M_ij, cfg.transform)
+                    break
+
         report.transforms.append(M)
         if M is None:
             out.append(frames[i])

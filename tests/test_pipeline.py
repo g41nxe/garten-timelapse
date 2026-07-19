@@ -49,3 +49,19 @@ def test_run_with_stabilization_enabled(tmp_path):
 
     assert run(cfg) == 0
     assert iio.imread(out, index=None).shape[0] == 2
+
+
+def test_run_survives_all_frames_failing_alignment(tmp_path):
+    src = tmp_path / "imgs"
+    src.mkdir()
+    ref = _scene()
+    iio.imwrite(src / "photo_20260629_060000.jpg", ref)
+    iio.imwrite(src / "photo_20260629_120000.jpg", cv2.warpAffine(
+        ref, np.float32([[1, 0, 8], [0, 1, -4]]), (ref.shape[1], ref.shape[0])))
+
+    out = tmp_path / "fail.mp4"
+    cfg = Config(src=src, out=out, fps=10)
+    cfg.stabilize.min_inliers = 10**9   # unerreichbar -> alle Frames bleiben Identität
+
+    assert run(cfg) == 0
+    assert iio.imread(out, index=None).shape[0] == 2

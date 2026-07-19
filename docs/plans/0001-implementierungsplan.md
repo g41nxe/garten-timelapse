@@ -57,9 +57,10 @@ _`crop_series`: gemeinsames gültiges Rechteck (Masken via Konstant-0-Warp) → 
   auf `max_zoom` geklemmt, `crop_clamped=True`.
 - **Sichtbar:** MP4 ohne Ränder; bei großem Sprung dezenter Zoom statt Extrembeschnitt.
 
-## Slice 5 — Fehlschlag-Robustheit + Warnungen
+## Slice 5 — Fehlschlag-Robustheit + Warnungen — ✅ erledigt
 
 **Ziel:** Kein Frame verworfen; schlechte Frames bleiben unverändert und werden gemeldet.
+_Konfidenz-Gate (`min_inliers`), Retry gegen nächstgelegene gute Nachbarn mit Transform-Verkettung (`_compose`), sonst Identität. pipeline: Warnung pro Frame (mit Zeitstempel) + Lauf-Zusammenfassung. Real (min_inliers=150): 106/111 über Ketten gerettet, 5 ehrlich gemeldet. 28 Tests grün._
 
 - **Implementieren:** Konfidenz = RANSAC-Inlier; `< min_inliers` → Fehlschlag; bis
   `retries` gegen alternative Anker; sonst Identität. `pipeline` gibt pro Fehlschlag eine

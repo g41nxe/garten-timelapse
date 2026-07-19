@@ -68,3 +68,33 @@ def test_crop_clamps_at_max_zoom_for_large_shift():
 
     assert report.crop_clamped
     assert abs(report.crop_zoom - 1.2) < 1e-6      # auf max_zoom geklemmt
+
+
+def test_min_inliers_gate_marks_frame_failed():
+    ref = _scene()
+    shifted = _shift(ref, 14, -9)
+    frames, report = stabilize_series([ref, shifted], StabilizeConfig(min_inliers=100000, retries=0))
+
+    assert report.failed_indices == [1]
+    assert np.array_equal(frames[1], shifted)      # unerreichbare Schwelle -> Identität
+
+
+def test_retry_recovers_far_frame_via_neighbor():
+    ref = _scene(w=340)
+    frames = [ref, _shift(ref, 110, 0), _shift(ref, 210, 0)]   # far scheitert an ref (40<50), nicht an mid (66)
+    cfg = StabilizeConfig(transform="euclidean", min_inliers=50, retries=3)
+
+    _, report = stabilize_series(frames, cfg)
+
+    assert report.failed_indices == []             # far über mid gekettet
+    assert report.transforms[2] is not None
+
+
+def test_without_retry_far_frame_fails():
+    ref = _scene(w=340)
+    frames = [ref, _shift(ref, 110, 0), _shift(ref, 210, 0)]
+    cfg = StabilizeConfig(transform="euclidean", min_inliers=50, retries=0)
+
+    _, report = stabilize_series(frames, cfg)
+
+    assert report.failed_indices == [2]            # ohne Retry scheitert far an der Referenz
