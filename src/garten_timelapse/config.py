@@ -52,6 +52,14 @@ class Config:
             raise ValueError(f"fill muss aus {_FILLS} sein, nicht {s.fill!r}")
         if s.max_zoom < 1.0:
             raise ValueError(f"max_zoom muss >= 1.0 sein, nicht {s.max_zoom}")
+        if s.min_inliers < 1:
+            raise ValueError(f"min_inliers muss >= 1 sein, nicht {s.min_inliers}")
+        if s.retries < 0:
+            raise ValueError(f"retries muss >= 0 sein, nicht {s.retries}")
+        if self.fps <= 0:
+            raise ValueError(f"fps muss > 0 sein, nicht {self.fps}")
+        if self.render.width <= 0:
+            raise ValueError(f"render.width muss > 0 sein, nicht {self.render.width}")
 
 
 def load_config(path: str | Path, overrides: dict | None = None) -> Config:

@@ -66,6 +66,12 @@ def write(frames: list[np.ndarray], out: Path, fps: int, colors: int = 128) -> N
     .mp4 -> H.264, .webm -> VP9 (beide via imageio-ffmpeg), .gif -> Palette (colors).
     """
     out = Path(out)
+    shapes = {f.shape for f in frames}
+    if len(shapes) != 1:
+        raise ValueError(
+            f"Alle Frames müssen dieselbe Größe haben; gefunden: {sorted(shapes)}. "
+            "Stammen die Bilder aus verschiedenen Auflösungen/Seitenverhältnissen?"
+        )
     stack = np.stack(frames)
     if out.suffix.lower() == ".gif":
         iio.imwrite(out, stack, duration=1000 / fps, loop=0)

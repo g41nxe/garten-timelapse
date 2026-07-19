@@ -48,3 +48,14 @@ def test_invalid_mode_raises(tmp_path):
 def test_missing_src_raises(tmp_path):
     with pytest.raises(ValueError):
         _cfg(tmp_path, '[output]\npath = "out.mp4"\n')
+
+
+def test_invalid_fps_raises(tmp_path):
+    # _MINIMAL endet mit der [output]-Sektion -> fps landet dort.
+    with pytest.raises(ValueError):
+        _cfg(tmp_path, _MINIMAL + "fps = 0\n")
+
+
+def test_invalid_width_raises(tmp_path):
+    with pytest.raises(ValueError):
+        _cfg(tmp_path, _MINIMAL + "[render]\nwidth = 0\n")

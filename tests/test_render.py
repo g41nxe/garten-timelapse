@@ -3,6 +3,7 @@ from datetime import datetime
 
 import imageio.v3 as iio
 import numpy as np
+import pytest
 
 from garten_timelapse.config import RenderConfig
 from garten_timelapse.render import format_caption, prepare_frame, write
@@ -51,3 +52,9 @@ def test_prepare_frame_no_caption_without_timestamp():
     img = np.full((200, 300, 3), 128, dtype=np.uint8)
     out = prepare_frame(img, None, RenderConfig(width=300, caption=True))
     assert np.array_equal(out, img)   # ohne Zeitstempel keine Einblendung
+
+
+def test_write_rejects_nonuniform_frame_sizes(tmp_path):
+    frames = [np.zeros((64, 96, 3), np.uint8), np.zeros((48, 96, 3), np.uint8)]
+    with pytest.raises(ValueError, match="dieselbe Größe"):
+        write(frames, tmp_path / "x.mp4", fps=10)
