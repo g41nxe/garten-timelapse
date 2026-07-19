@@ -117,6 +117,18 @@ def test_sequential_aligns_via_predecessor_when_reference_differs():
     assert set(ref.failed_indices) >= {2, 3}       # reference kann die B-Frames nicht an A ankern
 
 
+def test_sequential_failure_midchain_restarts_cleanly():
+    a = _scene(seed=1)
+    b = _scene(seed=9)
+    frames = [a, _shift(a, 10, 0), b, _shift(b, 12, 0)]   # gut, gut, Szenenwechsel(scheitert), gut-relativ-zu-b
+
+    out, report = stabilize_series(frames, StabilizeConfig(mode="sequential"))
+
+    assert report.failed_indices == [2]            # nur der Szenenwechsel
+    # letztes Frame ist relativ zu b ausgerichtet (Ketten-Neustart) -> holt b zurück, keine Fehlplatzierung
+    assert _recovers_ref(out[3], b)
+
+
 def test_affine_transform_recovers_shift():
     ref = _scene()
     out, report = stabilize_series([ref, _shift(ref, 12, -7)], StabilizeConfig(transform="affine"))

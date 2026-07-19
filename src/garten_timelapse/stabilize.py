@@ -1,9 +1,8 @@
 """Frame-Ausrichtung per OpenCV ORB + RANSAC, Warp und Zuschnitt (ADR 0001).
 
-STUB — noch nicht implementiert (per TDD zu füllen). Die Schnittstelle ist bewusst
-rein: Eingang sind numpy-Bildarrays, Ausgang die stabilisierten Arrays plus ein
-Bericht (welche Frames scheiterten, welcher Zuschnitt angewandt wurde). So testbar
-mit synthetisch verschobenen Bildern, ohne echtes Material.
+Reine Schnittstelle: Eingang sind numpy-Bildarrays, Ausgang die stabilisierten Arrays
+plus ein Bericht (welche Frames scheiterten, welcher Zuschnitt angewandt wurde). So
+testbar mit synthetisch verschobenen Bildern, ohne echtes Material.
 """
 from __future__ import annotations
 
@@ -28,14 +27,14 @@ def _to_gray(img: np.ndarray) -> np.ndarray:
     return cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 
 
-def estimate_transform(src_gray: np.ndarray, ref_gray: np.ndarray, transform: str):
-    """Schätzt die Transform (src -> ref) per ORB-Matching + RANSAC.
+def _detect(gray: np.ndarray):
+    """ORB-Keypoints + Deskriptoren für ein Graustufenbild."""
+    return cv2.ORB_create(2000).detectAndCompute(gray, None)
 
-    Rückgabe: (matrix, inliers) oder (None, 0) wenn zu wenige/schlechte Matches.
-    """
-    orb = cv2.ORB_create(2000)
-    k1, d1 = orb.detectAndCompute(src_gray, None)
-    k2, d2 = orb.detectAndCompute(ref_gray, None)
+
+def _match(feat_src, feat_ref, transform: str):
+    """Schätzt die Transform (src -> ref) aus vorberechneten Features + RANSAC."""
+    (k1, d1), (k2, d2) = feat_src, feat_ref
     if d1 is None or d2 is None or len(k1) < 4 or len(k2) < 4:
         return None, 0
 
@@ -55,6 +54,14 @@ def estimate_transform(src_gray: np.ndarray, ref_gray: np.ndarray, transform: st
     if M is None:
         return None, 0
     return M, int(inliers.sum()) if inliers is not None else 0
+
+
+def estimate_transform(src_gray: np.ndarray, ref_gray: np.ndarray, transform: str):
+    """Schätzt die Transform (src -> ref) per ORB-Matching + RANSAC.
+
+    Rückgabe: (matrix, inliers) oder (None, 0) wenn zu wenige/schlechte Matches.
+    """
+    return _match(_detect(src_gray), _detect(ref_gray), transform)
 
 
 def _warp(img: np.ndarray, M: np.ndarray, transform: str, border: int = cv2.BORDER_CONSTANT) -> np.ndarray:
@@ -89,28 +96,32 @@ def stabilize_series(frames: list[np.ndarray], cfg: StabilizeConfig) -> tuple[li
         return [], report
 
     border = cv2.BORDER_REPLICATE if cfg.fill == "replicate" else cv2.BORDER_CONSTANT
-    grays = [_to_gray(f) for f in frames]
+    feats = [_detect(_to_gray(f)) for f in frames]   # Features einmal pro Frame (F2)
     out = [frames[0]]
     report.transforms = [None]   # Referenz = Identität
     report.aligned = 1
 
     if cfg.mode == "sequential":
-        cum = None   # Transform Vorgänger -> Referenz (kumulativ)
+        prev_M, prev_i = None, 0   # (Vorgänger -> Referenz, Index des Vorgängers)
         for i in range(1, len(frames)):
-            M_prev, n = estimate_transform(grays[i], grays[i - 1], cfg.transform)
-            if M_prev is None or n < cfg.min_inliers:
-                M = cum   # Kette hält am letzten guten Stand; Frame gilt als Fehlschlag
+            M_local, n = _match(feats[i], feats[prev_i], cfg.transform)
+            if M_local is None or n < cfg.min_inliers:
+                # Fehlschlag: Frame unverändert (Identität); Kette startet ab hier neu
+                # (koordinaten-sauber statt gegen einen unpassenden Anker zu komponieren).
+                report.transforms.append(None)
                 report.failed_indices.append(i)
+                out.append(frames[i])
+                prev_M, prev_i = None, i
             else:
-                M = M_prev if cum is None else _compose(cum, M_prev, cfg.transform)
-                cum = M
+                M = M_local if prev_M is None else _compose(prev_M, M_local, cfg.transform)
+                report.transforms.append(M)
+                out.append(_warp(frames[i], M, cfg.transform, border))
                 report.aligned += 1
-            report.transforms.append(M)
-            out.append(frames[i] if M is None else _warp(frames[i], M, cfg.transform, border))
+                prev_M, prev_i = M, i
         return out, report
 
     for i in range(1, len(frames)):
-        M, n = estimate_transform(grays[i], grays[0], cfg.transform)
+        M, n = _match(feats[i], feats[0], cfg.transform)
         if M is None or n < cfg.min_inliers:
             M = None   # zu wenig Konfidenz -> verwerfen und über Nachbarn versuchen
             anchors = sorted(
@@ -118,7 +129,7 @@ def stabilize_series(frames: list[np.ndarray], cfg: StabilizeConfig) -> tuple[li
                 key=lambda j: abs(j - i),
             )[: cfg.retries]
             for j in anchors:
-                M_ij, n_ij = estimate_transform(grays[i], grays[j], cfg.transform)
+                M_ij, n_ij = _match(feats[i], feats[j], cfg.transform)
                 if M_ij is not None and n_ij >= cfg.min_inliers:
                     M = _compose(report.transforms[j], M_ij, cfg.transform)
                     break
