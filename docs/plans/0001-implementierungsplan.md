@@ -9,10 +9,11 @@ imageio[ffmpeg], pillow, numpy, pytest.
 
 ---
 
-## Slice 1 — Passthrough-Zeitraffer (Tracer-Bullet)
+## Slice 1 — Passthrough-Zeitraffer (Tracer-Bullet) — ✅ erledigt (20a574a)
 
 **Ziel:** Aus dem Bild-Ordner entsteht eine echte MP4 — *ohne* Stabilisierung, *ohne*
 Zeitstempel. Beweist, dass loader → render → pipeline → cli end-to-end läuft.
+_Verifiziert auf 111 echten Fotos: 800×600, 2,8 MB, 13 Tests grün._
 
 - **Implementieren:** `render.prepare_frame` (nur Skalierung auf `width`),
   `render.write` (imageio, Format via Endung — hier `.mp4`), `pipeline.run`
