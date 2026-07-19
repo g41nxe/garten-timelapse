@@ -94,6 +94,21 @@ def stabilize_series(frames: list[np.ndarray], cfg: StabilizeConfig) -> tuple[li
     report.transforms = [None]   # Referenz = Identität
     report.aligned = 1
 
+    if cfg.mode == "sequential":
+        cum = None   # Transform Vorgänger -> Referenz (kumulativ)
+        for i in range(1, len(frames)):
+            M_prev, n = estimate_transform(grays[i], grays[i - 1], cfg.transform)
+            if M_prev is None or n < cfg.min_inliers:
+                M = cum   # Kette hält am letzten guten Stand; Frame gilt als Fehlschlag
+                report.failed_indices.append(i)
+            else:
+                M = M_prev if cum is None else _compose(cum, M_prev, cfg.transform)
+                cum = M
+                report.aligned += 1
+            report.transforms.append(M)
+            out.append(frames[i] if M is None else _warp(frames[i], M, cfg.transform, border))
+        return out, report
+
     for i in range(1, len(frames)):
         M, n = estimate_transform(grays[i], grays[0], cfg.transform)
         if M is None or n < cfg.min_inliers:

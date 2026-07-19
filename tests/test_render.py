@@ -58,3 +58,14 @@ def test_write_rejects_nonuniform_frame_sizes(tmp_path):
     frames = [np.zeros((64, 96, 3), np.uint8), np.zeros((48, 96, 3), np.uint8)]
     with pytest.raises(ValueError, match="dieselbe Größe"):
         write(frames, tmp_path / "x.mp4", fps=10)
+
+
+@pytest.mark.parametrize("suffix", [".gif", ".webm"])
+def test_write_other_formats_contain_all_frames(tmp_path, suffix):
+    frames = [np.full((64, 96, 3), v, dtype=np.uint8) for v in (20, 130, 240)]
+    out = tmp_path / f"clip{suffix}"
+
+    write(frames, out, fps=10)
+
+    assert out.exists() and out.stat().st_size > 0
+    assert iio.imread(out, index=None).shape[0] == 3

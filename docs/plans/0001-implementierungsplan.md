@@ -48,7 +48,7 @@ _ORB+RANSAC (`estimate_transform`, alle 3 Transform-Modelle), `stabilize_series`
 ## Slice 4 — Zuschnitt + max-zoom + fill — ✅ erledigt
 
 **Ziel:** Saubere Kanten statt schwarzer Ränder.
-_`crop_series`: gemeinsames gültiges Rechteck (Masken via Konstant-0-Warp) → größtes zentrales Rechteck, gedeckelt bei `max_zoom`; `fill` steuert Warp-Border (replicate/black). Report crop_zoom/crop_clamped + Warnungen in pipeline. Real: 111 Fotos → 1.13× (704×528), in-memory randfrei (Kanten 38–54). 24 Tests grün. (Rest-0 im MP4 = H.264-Rauschen auf dunklen Kanten → Encode-Qualität in Slice 6.)_
+_`crop_series`: gemeinsames gültiges Rechteck (Masken via Konstant-0-Warp) → größtes zentrales Rechteck, gedeckelt bei `max_zoom`; `fill` steuert Warp-Border (replicate/black). Report crop_zoom/crop_clamped + Warnungen in pipeline. Real: 111 Fotos → 1.13× (704×528), in-memory randfrei (Kanten 38–54). 24 Tests grün. (Das Schwarz unten-links im finalen Video ist der Zeitstempel-Balken, kein Warp-Rand — Crop verifiziert sauber.)_
 
 - **Implementieren:** größtes gemeinsames gültiges Rechteck über alle Warps; Deckel
   `max_zoom`; bei Überschreitung klemmen + Rest-Rand `fill` (`replicate`/`black`).
@@ -70,9 +70,10 @@ _Konfidenz-Gate (`min_inliers`), Retry gegen nächstgelegene gute Nachbarn mit T
   Warnung geloggt; Summary zählt korrekt.
 - **Sichtbar:** Konsole listet die übersprungenen (Nacht-)Frames + Zusammenfassung.
 
-## Slice 6 — Flexibilität: Modi, Transforms, Formate
+## Slice 6 — Flexibilität: Modi, Transforms, Formate — ✅ erledigt
 
 **Ziel:** Die Regler aus der Config/CLI greifen alle.
+_`sequential`-Modus (Frame→Vorgänger, kumulativ via `_compose`); affine/homographie fließen durch estimate_transform/_warp; `write` mit Format-Dispatch: GIF (Palette `colors`), WebM (VP9), MP4 (H.264, CRF 18). Real verifiziert: MP4/WebM/sequential über CLI. 33 Tests grün._
 
 - **Implementieren:** `mode="sequential"` (Frame→Vorgänger, Transforms kumulativ);
   `transform` affine (`estimateAffine2D`) / homography (`findHomography` + `warpPerspective`);

@@ -72,12 +72,21 @@ def write(frames: list[np.ndarray], out: Path, fps: int, colors: int = 128) -> N
             f"Alle Frames müssen dieselbe Größe haben; gefunden: {sorted(shapes)}. "
             "Stammen die Bilder aus verschiedenen Auflösungen/Seitenverhältnissen?"
         )
+    suffix = out.suffix.lower()
+    if suffix == ".gif":
+        # Auf colors Palettenfarben quantisieren (kleinere Datei).
+        pal = [
+            np.asarray(Image.fromarray(f).quantize(colors=colors, method=Image.MEDIANCUT).convert("RGB"))
+            for f in frames
+        ]
+        iio.imwrite(out, np.stack(pal), duration=1000 / fps, loop=0)
+        return
+
+    # Video: H.264/VP9 brauchen gerade Kantenlängen — auf gerade Maße zuschneiden.
     stack = np.stack(frames)
-    if out.suffix.lower() == ".gif":
-        iio.imwrite(out, stack, duration=1000 / fps, loop=0)
-    else:
-        # H.264/VP9 brauchen gerade Kantenlängen; sonst padded imageio auf Vielfache von 16
-        # (Warnung + schwarzer Rand). Auf gerade Maße zuschneiden und Padding abschalten.
-        h, w = stack.shape[1:3]
-        stack = stack[:, : h - h % 2, : w - w % 2]
-        iio.imwrite(out, stack, fps=fps, macro_block_size=1)
+    h, w = stack.shape[1:3]
+    stack = stack[:, : h - h % 2, : w - w % 2]
+    if suffix == ".webm":
+        iio.imwrite(out, stack, fps=fps, codec="vp9")
+    else:  # .mp4 und Default: H.264 mit hoher Qualität (CRF 18 gegen Kantenrauschen)
+        iio.imwrite(out, stack, fps=fps, codec="libx264", macro_block_size=1, output_params=["-crf", "18"])

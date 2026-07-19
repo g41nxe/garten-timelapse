@@ -98,3 +98,34 @@ def test_without_retry_far_frame_fails():
     _, report = stabilize_series(frames, cfg)
 
     assert report.failed_indices == [2]            # ohne Retry scheitert far an der Referenz
+
+
+def _recovers_ref(out_frame, ref):
+    c = (slice(30, 210), slice(50, 280))
+    return np.abs(out_frame[c].astype(int) - ref[c].astype(int)).mean() < 14
+
+
+def test_sequential_aligns_via_predecessor_when_reference_differs():
+    a = _scene(seed=1)
+    b = _scene(seed=9)                              # andere Szene als die Referenz
+    frames = [a, b, _shift(b, 15, 0), _shift(b, 30, 0)]
+
+    _, seq = stabilize_series(frames, StabilizeConfig(mode="sequential"))
+    _, ref = stabilize_series(frames, StabilizeConfig(mode="reference"))
+
+    assert seq.failed_indices == [1]               # nur der Szenenwechsel; Rest über Vorgänger gekettet
+    assert set(ref.failed_indices) >= {2, 3}       # reference kann die B-Frames nicht an A ankern
+
+
+def test_affine_transform_recovers_shift():
+    ref = _scene()
+    out, report = stabilize_series([ref, _shift(ref, 12, -7)], StabilizeConfig(transform="affine"))
+    assert report.failed_indices == []
+    assert _recovers_ref(out[1], ref)
+
+
+def test_homography_transform_recovers_shift():
+    ref = _scene()
+    out, report = stabilize_series([ref, _shift(ref, 12, -7)], StabilizeConfig(transform="homography"))
+    assert report.failed_indices == []
+    assert _recovers_ref(out[1], ref)
