@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.coverage
+
+# Virtuelle Umgebungen
+.venv/
+venv/
+env/
+
+# Eingabe-Bilder und generierte Zeitraffer (lokal, nicht versionieren)
+camera-photos/
+camera-fotos/
+*.mp4
+*.webm
+*.gif
+!docs/**/*.gif        # falls mal ein Beispiel-GIF in die Doku soll
+
+# Editor
+.vscode/
+.idea/

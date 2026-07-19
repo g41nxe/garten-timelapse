@@ -1,0 +1,26 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "garten-timelapse"
+version = "0.1.0"
+description = "Stabilisierter Zeitraffer aus einer Bilderserie (kamera-agnostisch)."
+readme = "README.md"
+requires-python = ">=3.11"          # tomllib ist ab 3.11 in der stdlib
+license = "AGPL-3.0-or-later"        # wie garden; ggf. anpassen
+dependencies = [
+    "opencv-python>=4.9",            # Feature-Matching, Warp (Stabilisierung)
+    "imageio[ffmpeg]>=2.34",         # Ausgabe MP4/GIF/WebM (bundelt statisches ffmpeg)
+    "pillow>=10",                    # Skalierung + Zeitstempel-Overlay
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+garten-timelapse = "garten_timelapse.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/garten_timelapse"]

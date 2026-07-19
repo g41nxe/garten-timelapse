@@ -1,0 +1,29 @@
+# Beispiel-Konfiguration für garten-timelapse.
+# Kopieren nach z. B. `zeitraffer.toml` und anpassen, dann:
+#   garten-timelapse --config zeitraffer.toml
+# CLI-Overrides möglich für --mode / --transform / --out.
+
+[input]
+# Ordner mit den Einzelbildern (rekursiv). Dateiname photo_YYYYMMDD_HHMMSS.jpg
+# liefert den Zeitstempel für Sortierung und Einblendung.
+src = "camera-photos/Garten01"
+
+[output]
+# Format ergibt sich aus der Endung: .mp4 (H.264) / .gif / .webm (VP9).
+path = "garten.mp4"
+fps  = 12
+
+[stabilize]
+enabled     = true
+mode        = "reference"    # "reference" (fest, driftfrei) | "sequential" (Frame→Vorgänger)
+transform   = "euclidean"    # "euclidean" (starr) | "affine" | "homography"
+reference   = "auto"         # "auto" (gut ausgeleuchtetes Frame) | Dateiname | Index
+min_inliers = 20             # Konfidenz-Schwelle: darunter gilt die Ausrichtung als gescheitert
+retries     = 3              # Fehlversuche gegen alternative Anker, dann Identität + Warnung
+max_zoom    = 1.5            # Deckel für den Auto-Zuschnitt (≥ ~67 % bleiben erhalten)
+fill        = "replicate"    # Rest-Rand beim Deckel: "replicate" (Kanten fortsetzen) | "black"
+
+[render]
+width   = 800                # max. Breite in px (Seitenverhältnis bleibt)
+colors  = 128                # nur GIF: Palettengröße
+caption = true               # Zeitstempel pro Frame einblenden
